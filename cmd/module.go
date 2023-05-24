@@ -39,8 +39,7 @@ type Tree struct {
 // AttribnutionsFile represent the data that should be rendered in a
 // ATTRIBUTIONS.md file.
 type AttributionsFile struct {
-	// Header template
-	Header string
+	ModuleName string
 	// The module dependency tree
 	Tree *Tree
 }

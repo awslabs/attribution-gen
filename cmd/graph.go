@@ -18,17 +18,23 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 )
 
 var (
 	ErrorGoModFileNotFound = errors.New("module file (go.mod) not found")
-	ErrorLicenseNotFound   = errors.New("LICENSE file not found")
+
+	licenseRegexp    = regexp.MustCompile(`^(?i)((UN)?LICEN(S|C)E|COPYING).*$`)
+	licenseFileNames = []string{
+		"MIT-License.md",
+	}
 )
 
 // graphBuilder helps building the dependency graph of a given go module.
@@ -105,37 +111,47 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 		gb.logger.Debugf("Exploring module %s", mod.String())
 
 		// first check the cache
-		module, cached := gb.getModuleFromCache(mod)
-		if cached {
+		if module, cached := gb.getModuleFromCache(mod); cached {
 			modules = append(modules, module)
 			continue
 		}
 
-		// else, recursively build the Module object and cache it
-		license, requiredModules, err := gb.extractLicenseAndRequiredModules(mod)
-		if err != nil {
-			return nil, err
+		module := &Module{
+			Version:      mod,
+			License:      &License{},
+			Dependencies: []*Module{},
 		}
-		gb.logger.Debugf("Found %s license and %d required modules", mod.String(), len(requiredModules))
 
-		licenseType, err := gb.lc.detectLicense(license)
-		if err != nil {
-			return nil, err
+		// else, recursively build the Module object and cache it
+		if license, requiredModules, err := gb.extractLicenseAndRequiredModules(mod); err != nil {
+			switch err {
+			case ErrorLicenseNotFound:
+				gb.logger.Warnf("%s in module %s", err, strings.Replace(mod.String(), "@", "\t", 1))
+			default:
+				return nil, err
+			}
+		} else {
+			gb.logger.Debugf("Found %s license and %d required modules", mod.String(), len(requiredModules))
+
+			if licenseType, err := gb.lc.detectLicense(license); err != nil {
+				switch err {
+				case ErrorLicenseUnknown:
+					gb.logger.Warnf("%s in module %s", err, strings.Replace(mod.String(), "@", "\t", 1))
+				default:
+					return nil, err
+				}
+			} else {
+				module.License.Data = license
+				module.License.Name = licenseType
+			}
+			if moduleDependencies, err := gb.buildModulesDependencyGraph(
+				requiredModules, depth+1, maxDepth,
+			); err != nil {
+				return nil, err
+			} else {
+				module.Dependencies = moduleDependencies
+			}
 		}
-		module = &Module{
-			Version: mod,
-			License: &License{
-				Data: license,
-				Name: licenseType,
-			},
-		}
-		moduleDependencies, err := gb.buildModulesDependencyGraph(
-			requiredModules, depth+1, maxDepth,
-		)
-		if err != nil {
-			return nil, err
-		}
-		module.Dependencies = moduleDependencies
 
 		// cache the module
 		gb.cacheModule(module)
@@ -193,7 +209,7 @@ func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 				return nil, fmt.Errorf("cannot open license file: %v", err)
 			}
 			defer f.Close()
-			b, err := ioutil.ReadAll(f)
+			b, err := io.ReadAll(f)
 			if err != nil {
 				return nil, fmt.Errorf("cannot read license file content: %v", err)
 			}
@@ -205,12 +221,9 @@ func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 
 // isLicenseFilename returns true if the filename most likely contains a license.
 func isLicenseFilename(filename string) bool {
-	name := strings.ToLower(filename)
-	// NOTE(a-hilaly) are we missing any other cases?
-	return name == "/license.txt" ||
-		name == "/license" ||
-		name == "/license.md" ||
-		name == "/copying"
+	filename = strings.TrimPrefix(filename, "/")
+	return licenseRegexp.Match([]byte(filename)) ||
+		slices.Contains(licenseFileNames, filename)
 }
 
 // extractLicense looks in a module zipFile and returns the list of required modules.
@@ -227,7 +240,7 @@ func getRequiredModules(moduleFullName string, zipfile []byte) ([]*module.Versio
 				return nil, fmt.Errorf("cannot open mod file: %v", err)
 			}
 			defer f.Close()
-			b, err := ioutil.ReadAll(f)
+			b, err := io.ReadAll(f)
 			if err != nil {
 				return nil, fmt.Errorf("cannot read file content: %v", err)
 			}

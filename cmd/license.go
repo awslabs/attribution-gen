@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 
-	"github.com/google/licenseclassifier"
+	licenseclassifier "github.com/google/licenseclassifier/v2"
+	"github.com/google/licenseclassifier/v2/assets"
 )
 
 var (
-	ErrUnknownLicense = errors.New("unknown license")
+	ErrorLicenseNotFound = errors.New("license not found")
+	ErrorLicenseUnknown  = errors.New("license type unknown")
 )
 
 type LicenseType int
@@ -54,28 +56,39 @@ type License struct {
 func newLicenseClassifier(
 	confidenceThreshold float64,
 ) (*licenseClassifierWrapper, error) {
-	classifier, err := licenseclassifier.New(confidenceThreshold)
+	classifier, err := assets.DefaultClassifier()
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: it looks like the default clf doesn't support changing confidence threshold,
+	// we can use the confidenceThreshold level to filter out results less than it
 	return &licenseClassifierWrapper{
-		classifier: classifier,
+		confidenceThreshold: confidenceThreshold,
+		classifier:          classifier,
 	}, nil
 }
 
 // licenseClassifierWrapper is a wrapper around licenseclassifier.License
 type licenseClassifierWrapper struct {
-	classifier *licenseclassifier.License
+	confidenceThreshold float64
+	classifier          *licenseclassifier.Classifier
 }
 
 // detectLicense takes the byte of a given license and returns its name
 func (lcw *licenseClassifierWrapper) detectLicense(data []byte) (string, error) {
-	matches := lcw.classifier.MultipleMatch(string(data), true)
-	if len(matches) == 0 {
-		return "", ErrUnknownLicense
+	matches := lcw.classifier.Match(data).Matches
+	if matches.Len() == 0 {
+		return "", ErrorLicenseUnknown
 	}
 
-	licenseName := matches[0].Name
+	best := 0
+	for i := range matches {
+		if matches.Less(best, i) {
+			best = i
+		}
+	}
+
+	licenseName := matches[best].Name
 	return licenseName, nil
 }
