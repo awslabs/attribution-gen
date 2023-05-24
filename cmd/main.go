@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -72,7 +71,7 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	}
 
 	// parse the module file
-	bytes, err := ioutil.ReadFile(moduleFilePathOpt)
+	bytes, err := os.ReadFile(moduleFilePathOpt)
 	if err != nil {
 		return fmt.Errorf("cannot read modfile %v: %v", moduleFilePathOpt, err)
 	}
@@ -98,8 +97,8 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	// render the graph into a markdown file
 	r := newRenderer(logger)
 	output, err := r.generateAttributionsFiles(&AttributionsFile{
-		Tree:   tree,
-		Header: defaultHeader,
+		ModuleName: goMod.Module.Mod.String(),
+		Tree:       tree,
 	})
 	if err != nil {
 		return fmt.Errorf("cannot generate attributions file: %v", err)
