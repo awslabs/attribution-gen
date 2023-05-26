@@ -10,3 +10,6 @@ build:
 
 generate: build
 	${OUT} --depth 2 --output ${TOP}/ATTRIBUTIONS.md
+
+cli-test:
+	go test ${TOP}/test/...

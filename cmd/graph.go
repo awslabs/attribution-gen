@@ -131,6 +131,7 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 		gb.logger.Debugf("Exploring module %s", mod.String())
 
 		if indirectModule, overridden := gb.getIndirectModuleFromMap(mod); overridden {
+			gb.logger.Debugf("Indirect module defined, exploring module %v instead",indirectModule.String())
 			mod = indirectModule
 		}
 
@@ -202,7 +203,7 @@ func (gb *graphBuilder) extractLicenseAndRequiredModules(
 
 	// extract the license bytes
 	gb.logger.Debugf("Extracting %v license", mod.String())
-	license, err := extractLicense(mod.String(), moduleZip)
+	license, err := gb.extractLicense(mod.String(), moduleZip)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -219,19 +220,21 @@ func (gb *graphBuilder) extractLicenseAndRequiredModules(
 
 // extractLicense looks in a module zipFile and returns the content of its
 // license
-func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
+func (gb *graphBuilder)  extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 	zipReader, err := zip.NewReader(bytes.NewReader(zipfile), int64(len(zipfile)))
 	if err != nil {
 		return nil, err
 	}
 
 	for _, file := range zipReader.File {
-		cleanFileName := strings.TrimPrefix(file.Name, strings.ToLower(moduleFullName))
+		gb.logger.Traceln(file.Name)
+		cleanFileName := strings.TrimPrefix(file.Name, strings.ToLower(moduleFullName)+"/")
 		if isLicenseFilename(cleanFileName) {
 			f, err := file.Open()
 			if err != nil {
 				return nil, fmt.Errorf("cannot open license file: %v", err)
 			}
+			gb.logger.Debugf("Found license file '%v' in module %v", cleanFileName, moduleFullName)
 			defer f.Close()
 			b, err := io.ReadAll(f)
 			if err != nil {
@@ -245,7 +248,6 @@ func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 
 // isLicenseFilename returns true if the filename most likely contains a license.
 func isLicenseFilename(filename string) bool {
-	filename = strings.TrimPrefix(filename, "/")
 	return licenseRegexp.Match([]byte(filename)) ||
 		slices.Contains(licenseFileNames, filename)
 }

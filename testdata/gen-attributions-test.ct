@@ -1,0 +1,107 @@
+#Test Suite for gen-attributions
+
+# "top_level" test
+
+# This happy case test finds the LICENSE.txt file in the top directory 
+$ gen-attributions --depth 1 --go-proxy-url=https://goproxy.io --modfile=top_level.go.mod --debug --test
+level=debug msg="Started building the dependency graph"
+level=debug msg="Exploring module github.com/aws/aws-sdk-go@v1.44.103"
+level=debug msg="Downloading github.com/aws/aws-sdk-go@v1.44.103 content"
+level=debug msg="Extracting github.com/aws/aws-sdk-go@v1.44.103 license"
+level=debug msg="Found license file 'LICENSE.txt' in module github.com/aws/aws-sdk-go@v1.44.103"
+level=debug msg="Extracting github.com/aws/aws-sdk-go@v1.44.103 required modules"
+level=debug msg="Found github.com/aws/aws-sdk-go@v1.44.103 license and 3 required modules"
+level=debug msg="Cached github.com/aws/aws-sdk-go@v1.44.103 module"
+level=debug msg="Dependency graph built successfully"
+
+# "ignore_dir" test
+
+# This test finds the LICENSE file in the top directory 
+# and skips a directory called "helper/license/feature.go"
+$ gen-attributions --depth 1 --go-proxy-url=https://goproxy.io --modfile=ignore_dir.go.mod --debug --test
+level=debug msg="Started building the dependency graph"
+level=debug msg="Exploring module github.com/hashicorp/vault/sdk@v0.6.0"
+level=debug msg="Downloading github.com/hashicorp/vault/sdk@v0.6.0 content"
+level=debug msg="Extracting github.com/hashicorp/vault/sdk@v0.6.0 license"
+level=debug msg="Found license file 'LICENSE' in module github.com/hashicorp/vault/sdk@v0.6.0"
+level=debug msg="Extracting github.com/hashicorp/vault/sdk@v0.6.0 required modules"
+level=debug msg="Found github.com/hashicorp/vault/sdk@v0.6.0 license and 54 required modules"
+level=debug msg="Cached github.com/hashicorp/vault/sdk@v0.6.0 module"
+level=debug msg="Dependency graph built successfully"
+
+
+# "skip_nonlicense" test
+
+# This test finds the LICENSE and LICENSE.txt file in the top directory of 
+# github.com/opencontainers/image-spec@v1.1.0-rc3 and github.com/aws/aws-sdk-go-v2@v1.11.0 respectively
+# and skips files called ".tool/check-license" and ".github/workflows/license-check.yml"
+$ gen-attributions --depth 1 --go-proxy-url=https://goproxy.io --modfile=skip_nonlicense.go.mod --debug --test
+level=debug msg="Started building the dependency graph"
+level=debug msg="Exploring module github.com/opencontainers/image-spec@v1.1.0-rc3"
+level=debug msg="Downloading github.com/opencontainers/image-spec@v1.1.0-rc3 content"
+level=debug msg="Extracting github.com/opencontainers/image-spec@v1.1.0-rc3 license"
+level=debug msg="Found license file 'LICENSE' in module github.com/opencontainers/image-spec@v1.1.0-rc3"
+level=debug msg="Extracting github.com/opencontainers/image-spec@v1.1.0-rc3 required modules"
+level=debug msg="Found github.com/opencontainers/image-spec@v1.1.0-rc3 license and 9 required modules"
+level=debug msg="Cached github.com/opencontainers/image-spec@v1.1.0-rc3 module"
+level=debug msg="Exploring module github.com/aws/aws-sdk-go-v2@v1.11.0"
+level=debug msg="Downloading github.com/aws/aws-sdk-go-v2@v1.11.0 content"
+level=debug msg="Extracting github.com/aws/aws-sdk-go-v2@v1.11.0 license"
+level=debug msg="Found license file 'LICENSE.txt' in module github.com/aws/aws-sdk-go-v2@v1.11.0"
+level=debug msg="Extracting github.com/aws/aws-sdk-go-v2@v1.11.0 required modules"
+level=debug msg="Found github.com/aws/aws-sdk-go-v2@v1.11.0 license and 3 required modules"
+level=debug msg="Cached github.com/aws/aws-sdk-go-v2@v1.11.0 module"
+level=debug msg="Dependency graph built successfully"
+
+# "sub_dir" test
+
+# This test finds the gofmt/LICENSE file in the sub-directory "gofmt"
+$ gen-attributions --depth 1 --go-proxy-url=https://goproxy.io --modfile=sub_dir.go.mod --debug --test
+level=debug msg="Started building the dependency graph"
+level=debug msg="Exploring module github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2"
+level=debug msg="Downloading github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2 content"
+level=debug msg="Extracting github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2 license"
+level=debug msg="Found license file 'gofmt/LICENSE' in module github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2"
+level=debug msg="Extracting github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2 required modules"
+level=debug msg="Found github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2 license and 4 required modules"
+level=debug msg="Cached github.com/golangci/gofmt@v0.0.0-20220901101216-f2edd75033f2 module"
+level=debug msg="Dependency graph built successfully"
+
+# "indirect_dep" test
+
+# This test ensures that indirect dependencies replace sub dependencies when parsing through the go.mod tree
+# github.com/google/go-cmp@v0.5.8 is defined as a dependency in github.com/aws/aws-sdk-go-v2@v1.18.0
+# but since github.com/google/go-cmp@v0.5.9 is listed as an indirect dependency, gen-attributions searching for a license
+# in github.com/google/go-cmp@v0.5.9
+$ gen-attributions --depth 2 --go-proxy-url=https://goproxy.io --modfile=indirect_dep.go.mod --debug --test
+level=debug msg="Started building the dependency graph"
+level=debug msg="Exploring module github.com/aws/aws-sdk-go-v2@v1.18.0"
+level=debug msg="Downloading github.com/aws/aws-sdk-go-v2@v1.18.0 content"
+level=debug msg="Extracting github.com/aws/aws-sdk-go-v2@v1.18.0 license"
+level=debug msg="Found license file 'LICENSE.txt' in module github.com/aws/aws-sdk-go-v2@v1.18.0"
+level=debug msg="Extracting github.com/aws/aws-sdk-go-v2@v1.18.0 required modules"
+level=debug msg="Found github.com/aws/aws-sdk-go-v2@v1.18.0 license and 3 required modules"
+level=debug msg="Exploring module github.com/aws/smithy-go@v1.13.5"
+level=debug msg="Downloading github.com/aws/smithy-go@v1.13.5 content"
+level=debug msg="Extracting github.com/aws/smithy-go@v1.13.5 license"
+level=debug msg="Found license file 'LICENSE' in module github.com/aws/smithy-go@v1.13.5"
+level=debug msg="Extracting github.com/aws/smithy-go@v1.13.5 required modules"
+level=debug msg="Found github.com/aws/smithy-go@v1.13.5 license and 2 required modules"
+level=debug msg="Cached github.com/aws/smithy-go@v1.13.5 module"
+level=debug msg="Exploring module github.com/google/go-cmp@v0.5.8"
+level=debug msg="Indirect module defined, exploring module github.com/google/go-cmp@v0.5.9 instead"
+level=debug msg="Downloading github.com/google/go-cmp@v0.5.9 content"
+level=debug msg="Extracting github.com/google/go-cmp@v0.5.9 license"
+level=debug msg="Found license file 'LICENSE' in module github.com/google/go-cmp@v0.5.9"
+level=debug msg="Extracting github.com/google/go-cmp@v0.5.9 required modules"
+level=debug msg="Found github.com/google/go-cmp@v0.5.9 license and 0 required modules"
+level=debug msg="Cached github.com/google/go-cmp@v0.5.9 module"
+level=debug msg="Exploring module github.com/jmespath/go-jmespath@v0.4.0"
+level=debug msg="Downloading github.com/jmespath/go-jmespath@v0.4.0 content"
+level=debug msg="Extracting github.com/jmespath/go-jmespath@v0.4.0 license"
+level=debug msg="Found license file 'LICENSE' in module github.com/jmespath/go-jmespath@v0.4.0"
+level=debug msg="Extracting github.com/jmespath/go-jmespath@v0.4.0 required modules"
+level=debug msg="Found github.com/jmespath/go-jmespath@v0.4.0 license and 1 required modules"
+level=debug msg="Cached github.com/jmespath/go-jmespath@v0.4.0 module"
+level=debug msg="Cached github.com/aws/aws-sdk-go-v2@v1.18.0 module"
+level=debug msg="Dependency graph built successfully"
