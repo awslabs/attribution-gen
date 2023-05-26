@@ -8,7 +8,9 @@ third party code and licenses.
 
 ## Installing
 
-[TODO]
+- Build using `make build`
+- Move `./bin/gen-attributions` to `PATH`
+    - Ex: `sudo mv ./bin/gen-attributions /usr/local/bin`
 
 ## Using gen-attributions
 
@@ -74,7 +76,10 @@ INFO[0010] gen-attributions
 └── golang.org/x/xerrors@v0.0.0-20191204190536-9bdfabe68543 BSD-3-Clause
 ```
 
-## Usage
+## Testing
+
+`make cli-test`
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
