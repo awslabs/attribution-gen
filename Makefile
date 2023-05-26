@@ -1,10 +1,12 @@
+TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 SHELL := /bin/bash
 GO111MODULE=on
 
-OUT := ./bin/gen-attributions
+OUT := ${TOP}/bin/gen-attributions
+
 
 build:
-	go build -o ${OUT} ./cmd/*.go
+	go build -o ${OUT} ${TOP}/cmd/*.go
 
 generate: build
-	${OUT} --depth 2 --output ATTRIBUTIONS.md
+	${OUT} --depth 2 --output ${TOP}/ATTRIBUTIONS.md
