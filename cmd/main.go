@@ -61,7 +61,7 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:           "gen-attributions",
+	Use:           "attribution-gen",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Short:         "A tool to generate attributions file for Go projects",

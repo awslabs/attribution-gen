@@ -1,4 +1,4 @@
-module gen-attributions
+module github.com/awslabs/attribution-gen
 
 go 1.18
 

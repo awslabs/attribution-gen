@@ -1,4 +1,4 @@
-module gen-attributions
+module attribution-gen
 
 go 1.18
 
