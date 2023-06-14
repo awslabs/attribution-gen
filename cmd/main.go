@@ -36,10 +36,14 @@ var (
 	attributionsFileHeaderTemplateOpt string
 	attributionsFileBlockTemplateOpt  string
 	debugOpt                          bool
+	traceOpt 						  bool
+	testOpt							  bool
 	showGraphOpt                      bool
 )
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&testOpt, "test", false, "Change output formatting for testing verification")
+	rootCmd.PersistentFlags().BoolVar(&traceOpt, "trace", false, "Show trace output")
 	rootCmd.PersistentFlags().BoolVar(&debugOpt, "debug", false, "Show debug output")
 	rootCmd.PersistentFlags().BoolVar(&showGraphOpt, "show-graph", false, "Show the dependency graph in stdout")
 	rootCmd.PersistentFlags().IntVar(&depthOpt, "depth", defaultDepth, "Depth of the dependency tree to explore")
@@ -57,7 +61,7 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:           "gen-attributions",
+	Use:           "attribution-gen",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Short:         "A tool to generate attributions file for Go projects",
@@ -69,6 +73,15 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	if debugOpt {
 		logger.SetLevel(logrus.DebugLevel)
 	}
+	if traceOpt {
+		logger.SetLevel(logrus.TraceLevel)
+	}
+	if testOpt {
+		logger.SetFormatter(&logrus.TextFormatter{
+			DisableTimestamp: true,
+		})
+	}
+
 
 	// parse the module file
 	bytes, err := os.ReadFile(moduleFilePathOpt)

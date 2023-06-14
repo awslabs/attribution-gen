@@ -31,7 +31,7 @@ import (
 var (
 	ErrorGoModFileNotFound = errors.New("module file (go.mod) not found")
 
-	licenseRegexp    = regexp.MustCompile(`^(?i)((UN)?LICEN(S|C)E|COPYING).*$`)
+	licenseRegexp    = regexp.MustCompile(`(^|^[a-zA-Z]*/)(?i)((UN)?LICEN(S|C)E|COPYING)[^/]*$`)
 	licenseFileNames = []string{
 		"MIT-License.md",
 	}
@@ -40,6 +40,8 @@ var (
 // graphBuilder helps building the dependency graph of a given go module.
 type graphBuilder struct {
 	logger *logrus.Logger
+	// indirectModuleMap holds indirect dependency to search for the LICENSE in the versions explictly listed in go.mod rather than the version listed in the direct dependencies go.mod
+	indirectModuleMap map[string]*module.Version
 	// modulesCache is used to avoid downloading/parsing already seen modules.
 	modulesCache map[string]*Module
 	// classifier for licenses
@@ -54,6 +56,7 @@ func newGraphBuilder(logger *logrus.Logger, licenseClassificationTreshold float6
 	}
 	return &graphBuilder{
 		modulesCache: make(map[string]*Module),
+		indirectModuleMap: make(map[string]*module.Version),
 		logger:       logger,
 		lc:           lc,
 	}, nil
@@ -64,8 +67,16 @@ func newGraphBuilder(logger *logrus.Logger, licenseClassificationTreshold float6
 // will stop exploring the dependency graph.
 func (gb *graphBuilder) buildGraph(mod *modfile.File, maxDepth int) (*Tree, error) {
 	requiredModules := []*module.Version{}
+
 	for _, r := range mod.Require {
-		requiredModules = append(requiredModules, &r.Mod)
+
+		version := &r.Mod
+		if r.Indirect {
+			gb.mapIndirectModule(version)
+		} else {
+			requiredModules = append(requiredModules, version)
+		}
+		
 	}
 
 	gb.logger.Debug("Started building the dependency graph")
@@ -94,6 +105,15 @@ func (gb *graphBuilder) cacheModule(m *Module) {
 	gb.modulesCache[moduleID(m.Version)] = m
 }
 
+func (gb *graphBuilder) getIndirectModuleFromMap(mod *module.Version) (*module.Version, bool) {
+	m, found := gb.indirectModuleMap[mod.Path]
+	return m, found
+}
+
+func (gb *graphBuilder) mapIndirectModule(m *module.Version) {
+	gb.indirectModuleMap[m.Path] = m
+}
+
 // buildModulesDependencyGraph takes a list module IDs (version and path) and
 // returns a list *Module objects, containing the corresponding licenses and
 // dependencies.
@@ -109,6 +129,11 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 		}
 
 		gb.logger.Debugf("Exploring module %s", mod.String())
+
+		if indirectModule, overridden := gb.getIndirectModuleFromMap(mod); overridden {
+			gb.logger.Debugf("Indirect module defined, exploring module %v instead",indirectModule.String())
+			mod = indirectModule
+		}
 
 		// first check the cache
 		if module, cached := gb.getModuleFromCache(mod); cached {
@@ -178,7 +203,7 @@ func (gb *graphBuilder) extractLicenseAndRequiredModules(
 
 	// extract the license bytes
 	gb.logger.Debugf("Extracting %v license", mod.String())
-	license, err := extractLicense(mod.String(), moduleZip)
+	license, err := gb.extractLicense(mod.String(), moduleZip)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -195,19 +220,21 @@ func (gb *graphBuilder) extractLicenseAndRequiredModules(
 
 // extractLicense looks in a module zipFile and returns the content of its
 // license
-func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
+func (gb *graphBuilder)  extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 	zipReader, err := zip.NewReader(bytes.NewReader(zipfile), int64(len(zipfile)))
 	if err != nil {
 		return nil, err
 	}
 
 	for _, file := range zipReader.File {
-		cleanFileName := strings.TrimPrefix(file.Name, strings.ToLower(moduleFullName))
+		gb.logger.Traceln(file.Name)
+		cleanFileName := strings.TrimPrefix(file.Name, strings.ToLower(moduleFullName)+"/")
 		if isLicenseFilename(cleanFileName) {
 			f, err := file.Open()
 			if err != nil {
 				return nil, fmt.Errorf("cannot open license file: %v", err)
 			}
+			gb.logger.Debugf("Found license file '%v' in module %v", cleanFileName, moduleFullName)
 			defer f.Close()
 			b, err := io.ReadAll(f)
 			if err != nil {
@@ -221,7 +248,6 @@ func extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 
 // isLicenseFilename returns true if the filename most likely contains a license.
 func isLicenseFilename(filename string) bool {
-	filename = strings.TrimPrefix(filename, "/")
 	return licenseRegexp.Match([]byte(filename)) ||
 		slices.Contains(licenseFileNames, filename)
 }
