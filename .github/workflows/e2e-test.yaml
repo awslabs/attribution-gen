@@ -1,4 +1,5 @@
-name: unit tests
+name: e2e tests
+
 on:
   push:
     branches: [ main ]
@@ -19,8 +20,5 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build
-        run: go build cmd
-
-      - name: Run unit tests
-        run: go test -v ./...
+      - name: E2E tests
+        run: make test
