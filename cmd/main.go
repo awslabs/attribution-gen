@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	defaultOutputFileName = "ATTRIBUTIONS.md"
+	defaultOutputFileName = "ATTRIBUTION.md"
 	defaultModuleFileName = "go.mod"
 	defaultDepth          = 2
 )
@@ -36,8 +36,8 @@ var (
 	attributionsFileHeaderTemplateOpt string
 	attributionsFileBlockTemplateOpt  string
 	debugOpt                          bool
-	traceOpt 						  bool
-	testOpt							  bool
+	traceOpt                          bool
+	testOpt                           bool
 	showGraphOpt                      bool
 )
 
@@ -81,7 +81,6 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 			DisableTimestamp: true,
 		})
 	}
-
 
 	// parse the module file
 	bytes, err := os.ReadFile(moduleFilePathOpt)
