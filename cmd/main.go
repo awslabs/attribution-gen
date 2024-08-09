@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-package main
+package cmd
 
 import (
 	"fmt"
@@ -123,9 +123,9 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func main() {
+func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

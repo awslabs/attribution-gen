@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-package main
+package cmd
 
 import (
 	"archive/zip"
@@ -55,10 +55,10 @@ func newGraphBuilder(logger *logrus.Logger, licenseClassificationTreshold float6
 		return nil, err
 	}
 	return &graphBuilder{
-		modulesCache: make(map[string]*Module),
+		modulesCache:      make(map[string]*Module),
 		indirectModuleMap: make(map[string]*module.Version),
-		logger:       logger,
-		lc:           lc,
+		logger:            logger,
+		lc:                lc,
 	}, nil
 }
 
@@ -76,7 +76,7 @@ func (gb *graphBuilder) buildGraph(mod *modfile.File, maxDepth int) (*Tree, erro
 		} else {
 			requiredModules = append(requiredModules, version)
 		}
-		
+
 	}
 
 	gb.logger.Debug("Started building the dependency graph")
@@ -131,7 +131,7 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 		gb.logger.Debugf("Exploring module %s", mod.String())
 
 		if indirectModule, overridden := gb.getIndirectModuleFromMap(mod); overridden {
-			gb.logger.Debugf("Indirect module defined, exploring module %v instead",indirectModule.String())
+			gb.logger.Debugf("Indirect module defined, exploring module %v instead", indirectModule.String())
 			mod = indirectModule
 		}
 
@@ -220,7 +220,7 @@ func (gb *graphBuilder) extractLicenseAndRequiredModules(
 
 // extractLicense looks in a module zipFile and returns the content of its
 // license
-func (gb *graphBuilder)  extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
+func (gb *graphBuilder) extractLicense(moduleFullName string, zipfile []byte) ([]byte, error) {
 	zipReader, err := zip.NewReader(bytes.NewReader(zipfile), int64(len(zipfile)))
 	if err != nil {
 		return nil, err
