@@ -6,7 +6,7 @@ OUT := ${TOP}/bin/attribution-gen
 
 
 build:
-	go build -o ${OUT} ${TOP}/cmd/*.go
+	go build -o ${OUT} ${TOP}/main.go
 
 generate: build
 	${OUT} --depth 2 --output ${TOP}/ATTRIBUTIONS.md
