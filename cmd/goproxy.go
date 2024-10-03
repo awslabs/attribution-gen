@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	defaultGoProxyURL string = "http://proxy.golang.org"
+	defaultGoProxyURL string = "https://proxy.golang.org"
 )
 
 var (
