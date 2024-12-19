@@ -29,6 +29,7 @@ const (
 
 var (
 	ErrInvalidEscapedModulePath = errors.New("invalid escaped module path")
+	ErrModuleNotFound           = errors.New("module not found in proxy")
 )
 
 // downloadModule downloads the content a given module path/version.
@@ -51,6 +52,9 @@ func downloadModule(module *module.Version) ([]byte, error) {
 	if resp.StatusCode == 410 && strings.Contains(string(body), "invalid escaped module path") {
 		return nil, ErrInvalidEscapedModulePath
 	}
+	if resp.StatusCode == 404 {
+		return nil, ErrModuleNotFound
+	}
 
-	return nil, fmt.Errorf("unhanled response status code: %v", resp.StatusCode)
+	return nil, fmt.Errorf("unhandled response status code: %v", resp.StatusCode)
 }
