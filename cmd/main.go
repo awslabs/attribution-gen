@@ -39,6 +39,7 @@ var (
 	traceOpt                          bool
 	testOpt                           bool
 	showGraphOpt                      bool
+	allowModuleNotFoundOpt            bool
 )
 
 func init() {
@@ -46,6 +47,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&traceOpt, "trace", false, "Show trace output")
 	rootCmd.PersistentFlags().BoolVar(&debugOpt, "debug", false, "Show debug output")
 	rootCmd.PersistentFlags().BoolVar(&showGraphOpt, "show-graph", false, "Show the dependency graph in stdout")
+	rootCmd.PersistentFlags().BoolVar(&allowModuleNotFoundOpt, "allow-mod-not-found", false, "Allows modules that aren't found in the proxy to be skipped")
 	rootCmd.PersistentFlags().IntVar(&depthOpt, "depth", defaultDepth, "Depth of the dependency tree to explore")
 	rootCmd.PersistentFlags().StringVar(&goProxyURLOpt, "go-proxy-url", defaultGoProxyURL, "Go proxy used to fetch module versions and licenses")
 	rootCmd.PersistentFlags().StringVar(
@@ -97,7 +99,7 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	tree, err := gb.buildGraph(goMod, depthOpt)
+	tree, err := gb.buildGraph(goMod, depthOpt, allowModuleNotFoundOpt)
 	if err != nil {
 		return err
 	}

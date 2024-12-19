@@ -65,7 +65,7 @@ func newGraphBuilder(logger *logrus.Logger, licenseClassificationTreshold float6
 // buildGraph takes a modfile a max depth and proceeds into building the
 // dependency Tree. maxDepth is the depth at which the graphBuilder will
 // will stop exploring the dependency graph.
-func (gb *graphBuilder) buildGraph(mod *modfile.File, maxDepth int) (*Tree, error) {
+func (gb *graphBuilder) buildGraph(mod *modfile.File, maxDepth int, allowNotFound bool) (*Tree, error) {
 	requiredModules := []*module.Version{}
 
 	for _, r := range mod.Require {
@@ -81,7 +81,7 @@ func (gb *graphBuilder) buildGraph(mod *modfile.File, maxDepth int) (*Tree, erro
 
 	gb.logger.Debug("Started building the dependency graph")
 
-	modules, err := gb.buildModulesDependencyGraph(requiredModules, 0, maxDepth)
+	modules, err := gb.buildModulesDependencyGraph(requiredModules, 0, maxDepth, allowNotFound)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build modules tree: %v", err)
 	}
@@ -121,6 +121,7 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 	mods []*module.Version,
 	depth int,
 	maxDepth int,
+	allowNotFound bool,
 ) ([]*Module, error) {
 	var modules []*Module
 	for _, mod := range mods {
@@ -152,6 +153,12 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 			switch err {
 			case ErrorLicenseNotFound:
 				gb.logger.Warnf("%s in module %s", err, strings.Replace(mod.String(), "@", "\t", 1))
+			case ErrModuleNotFound:
+				if allowNotFound {
+					gb.logger.Warnf("Module %s was not found in proxy, skipping this module", mod.String())
+				} else {
+					return nil, err
+				}
 			default:
 				return nil, err
 			}
@@ -170,7 +177,7 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 				module.License.Name = licenseType
 			}
 			if moduleDependencies, err := gb.buildModulesDependencyGraph(
-				requiredModules, depth+1, maxDepth,
+				requiredModules, depth+1, maxDepth, allowNotFound,
 			); err != nil {
 				return nil, err
 			} else {
