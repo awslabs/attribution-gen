@@ -16,6 +16,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ const (
 
 var (
 	moduleFilePathOpt                 string
+	licenseFilePathOpt                string
 	depthOpt                          int
 	outputFilePathOpt                 string
 	goProxyURLOpt                     string
@@ -59,6 +61,7 @@ func init() {
 		defaultAttributionModuleBlockTemplate, "Module block template used to generate the attribution file",
 	)
 	rootCmd.PersistentFlags().StringVar(&moduleFilePathOpt, "modfile", defaultModuleFileName, "Go module file path")
+	rootCmd.PersistentFlags().StringVar(&licenseFilePathOpt, "licensefile", "", "License file for the corresponding go.mod module")
 	rootCmd.PersistentFlags().StringVarP(&outputFilePathOpt, "output", "o", defaultOutputFileName, "Output file name")
 }
 
@@ -94,11 +97,29 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot parse modfile: %v", err)
 	}
 
-	// build the dependency graph
-	gb, err := newGraphBuilder(logger, defaultConfidenceTreshHold)
+	// identify the main module license
+	lc, err := newLicenseClassifier(defaultConfidenceTreshHold)
 	if err != nil {
 		return err
 	}
+
+	moduleLicense := "unknown"
+	if licenseFilePathOpt == "" {
+		// Default to reading a file named LICENSE next to the go.mod file
+		licenseFilePathOpt = filepath.Join(filepath.Dir(moduleFilePathOpt), "LICENSE")
+	}
+	if licenseBytes, err := os.ReadFile(licenseFilePathOpt); err != nil {
+		logger.Warnf("cannot read license file %v: %v", licenseFilePathOpt, err)
+	} else {
+		if licenseIdent, err := lc.detectLicense(licenseBytes); err != nil {
+			logger.Warnf("cannot classify main module license: %v", err)
+		} else {
+			moduleLicense = licenseIdent
+		}
+	}
+
+	// build the dependency graph
+	gb := newGraphBuilder(logger, lc)
 	tree, err := gb.buildGraph(goMod, depthOpt, allowModuleNotFoundOpt)
 	if err != nil {
 		return err
@@ -111,8 +132,9 @@ func generateAttributionsFile(cmd *cobra.Command, args []string) error {
 	// render the graph into a markdown file
 	r := newRenderer(logger)
 	output, err := r.generateAttributionsFiles(&AttributionsFile{
-		ModuleName: goMod.Module.Mod.String(),
-		Tree:       tree,
+		ModuleName:    goMod.Module.Mod.String(),
+		ModuleLicense: moduleLicense,
+		Tree:          tree,
 	})
 	if err != nil {
 		return fmt.Errorf("cannot generate attributions file: %v", err)

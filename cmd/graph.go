@@ -49,17 +49,13 @@ type graphBuilder struct {
 }
 
 // newGraphBuilder instantiate a new graphBuilder
-func newGraphBuilder(logger *logrus.Logger, licenseClassificationTreshold float64) (*graphBuilder, error) {
-	lc, err := newLicenseClassifier(licenseClassificationTreshold)
-	if err != nil {
-		return nil, err
-	}
+func newGraphBuilder(logger *logrus.Logger, licenseClassifier *licenseClassifierWrapper) *graphBuilder {
 	return &graphBuilder{
 		modulesCache:      make(map[string]*Module),
 		indirectModuleMap: make(map[string]*module.Version),
 		logger:            logger,
-		lc:                lc,
-	}, nil
+		lc:                licenseClassifier,
+	}
 }
 
 // buildGraph takes a modfile a max depth and proceeds into building the
@@ -164,6 +160,7 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 			}
 		} else {
 			gb.logger.Debugf("Found %s license and %d required modules", mod.String(), len(requiredModules))
+			module.License.Data = license
 
 			if licenseType, err := gb.lc.detectLicense(license); err != nil {
 				switch err {
@@ -173,7 +170,6 @@ func (gb *graphBuilder) buildModulesDependencyGraph(
 					return nil, err
 				}
 			} else {
-				module.License.Data = license
 				module.License.Name = licenseType
 			}
 			if moduleDependencies, err := gb.buildModulesDependencyGraph(
