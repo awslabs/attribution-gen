@@ -91,16 +91,16 @@ func (r *renderer) renderModule(m *Module, indentLevel int) (string, error) {
 	buf := &bytes.Buffer{}
 
 	licenseData := ""
-	if getLicenseType(m.License.Name) == LicenseApache20 {
-		licenseData = "Apache License version 2.0"
-	} else {
+	// Skip copying the large apache-2.0 license text in the attribution doc
+	if m.License.Name != "Apache-2.0" {
 		licenseData = string(m.License.Data)
 	}
 	err = t.Execute(buf, &attributionModuleVars{
-		TitlePrefix:  fmt.Sprintf("%s###", indent),
-		License:      licenseData,
-		Name:         m.Version.Path,
-		Dependencies: m.Dependencies,
+		TitlePrefix:       fmt.Sprintf("%s###", indent),
+		LicenseIdentifier: m.License.Name,
+		License:           licenseData,
+		Name:              m.Version.Path,
+		Dependencies:      m.Dependencies,
 	})
 	if err != nil {
 		return "", err

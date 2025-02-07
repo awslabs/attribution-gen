@@ -1,16 +1,16 @@
 package test
 
 import (
-        "bytes"
-        "io"
-        "log"
-        "os"
-        "os/exec"
-        "path/filepath"
-        "sync"
-        "testing"
+	"bytes"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
+	"testing"
 
-        "github.com/google/go-cmdtest"
+	"github.com/google/go-cmdtest"
 )
 
 var once sync.Once
@@ -64,6 +64,10 @@ func TestCLI(t *testing.T) {
         ts.Setup = func(rootDir string) error {
                 for _, modFile := range testModFileNames {
                         err := copyFile(filepath.Join(testDataPath, modFile), filepath.Join(rootDir, modFile))
+                        if err != nil {
+                                return err
+                        }
+                        err = copyFile(filepath.Join(testDataPath, "LICENSE"), filepath.Join(rootDir, "LICENSE"))
                         if err != nil {
                                 return err
                         }

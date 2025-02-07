@@ -28,32 +28,8 @@ var (
 type LicenseType int
 
 const (
-	LicenseUnknown LicenseType = iota
-	LicenseApache20
-	LicenseMIT
-	LicenseBSD3Clause
-	LicenseISC
-	LicenseOther
-
 	defaultConfidenceTreshHold = 0.9
 )
-
-// getLicenseType takes a license name and returns the equivalent
-// LicenseType constant
-func getLicenseType(name string) LicenseType {
-	switch name {
-	case "Apache-2.0":
-		return LicenseApache20
-	case "MIT":
-		return LicenseMIT
-	case "BSD-3-Clause":
-		return LicenseMIT
-	case "ISC":
-		return LicenseISC
-	default:
-		return LicenseOther
-	}
-}
 
 // License represents a sotfware distribution and usage license
 type License struct {
@@ -103,5 +79,9 @@ func (lcw *licenseClassifierWrapper) detectLicense(data []byte) (string, error) 
 	}
 
 	licenseName := matches[best].Name
+	// license detection library can return "Copyright" which is not a valid license name/type
+	if licenseName == "Copyright" {
+		return "", ErrorLicenseUnknown
+	}
 	return licenseName, nil
 }
